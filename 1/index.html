@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CS180 Project 1: Images of the Russian Empire.">
+    <title>Project 1 · Images of the Russian Empire</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <header class="project-header">
+        <a class="back-link" href="../index.html" aria-label="Back to CS180 portfolio">
+            <span aria-hidden="true">←</span>
+            <span>CS180 Portfolio</span>
+        </a>
+        <span class="project-marker">Project 1 · Image Alignment</span>
+    </header>
+
+    <main>
+        <section class="project-hero">
+            <div class="hero-copy">
+                <p class="eyebrow">Project 1 · Computational Photography</p>
+                <h1>Images of the<br><em>Russian Empire</em></h1>
+                <p class="interactive-subtitle"><strong>Interactive note:</strong> Some method details and alternative image views (unaligned, L2, and NCC) are available only through the controls on the live webpage and are not captured in the PDF.</p>
+                <p class="hero-placeholder">The goal is simple: take the three color channels from each digitized Prokudin-Gorskii image, line them up, and bring the scene back to life in color with as few visual artifacts as possible.</p>
+            </div>
+            <div class="hero-aside" aria-label="Project summary">
+                <div><strong>17</strong><span>images</span></div>
+                <div><strong>2</strong><span>metrics</span></div>
+                <div><strong>5</strong><span>pyramid levels</span></div>
+            </div>
+            <span class="hero-number" aria-hidden="true">01</span>
+        </section>
+
+        <nav class="section-nav" aria-label="Project sections">
+            <a href="#approach">Approach</a>
+            <a href="#jpg-results">JPEG results</a>
+            <a href="#tiff-results">TIFF results</a>
+            <a href="#additional-results">Additional images</a>
+            <a href="#failures">Failure and observations</a>
+        </nav>
+
+        <section class="approach-section" id="approach">
+            <div class="section-heading">
+                <p class="section-kicker">01 · Approach</p>
+                <h2>From three channels<br>to one color image.</h2>
+            </div>
+            <div class="approach-grid">
+                <article>
+                    <span>01</span>
+                    <h3>Basic alignment</h3>
+                    <div class="approach-copy" id="approach-basic">
+                        <p>The blue channel serves as the fixed reference, while the green and red channels are aligned to it separately. A default search radius of 15 pixels tests every horizontal and vertical displacement from -15 to 15. For each possible <code>(x, y)</code> displacement, <code>np.roll</code> shifts the moving channel before it is compared with the reference channel. The displacement with the best score is kept. This basic search is used for the smaller JPEG images.</p>
+                    </div>
+                </article>
+                <article>
+                    <span>02</span>
+                    <h3>Image pyramid</h3>
+                    <div class="approach-copy" id="approach-pyramid">
+                        <p>The larger TIFF images use a five-level image pyramid, with each level half the width and height of the previous one. Level 0 contains the original image. With five levels, the smallest image is approximately one-sixteenth of the original width and height.</p>
+                        <p>Alignment begins at the smallest level, where a 15-pixel search covers a much larger area of the original image. After finding the first displacement, moving to the next larger level requires doubling the <code>(x, y)</code> values to account for the doubled image dimensions. This doubled displacement already gives a close estimate, so the next search only needs a two-pixel radius. The small radius corrects minor errors caused by resizing while keeping the search fast. The same process repeats until reaching the original resolution.</p>
+                    </div>
+                </article>
+                <article>
+                    <span>03</span>
+                    <h3>L2 and NCC</h3>
+                    <div class="approach-copy" id="approach-scoring">
+                        <p>Two scoring methods, L2 and NCC, compare how well the shifted channels match. L2 calculates <code>sum((image_1 - image_2)²)</code> and selects the displacement with the smallest result. NCC first subtracts the average value from each image, then calculates <code>sum(center_1 × center_2) / sqrt(sum(center_1²) × sum(center_2²))</code>. A larger NCC value represents a better match, so its negative value is used because the alignment function is written to select the smallest score.</p>
+                        <p>Part of each image border is ignored while calculating the score because the scan edges and the pixels wrapped around by <code>np.roll</code> do not represent the photographed scene. This keeps the comparison focused on the interior pixels and helps prevent incorrect results. The exact crop values were selected experimentally and are discussed below.</p>
+                    </div>
+                </article>
+            </div>
+            <button class="approach-toggle" type="button" aria-expanded="false" aria-controls="approach-basic approach-pyramid approach-scoring">
+                <span class="approach-toggle-label">Show more</span>
+                <span class="approach-toggle-icon" aria-hidden="true">+</span>
+            </button>
+        </section>
+
+        <section class="results-section section-paper-deep" id="jpg-results">
+            <div class="section-heading compact-heading">
+                <p class="section-kicker">02 · Small images</p>
+                <h2>Basic JPEG alignment</h2>
+                <p class="section-placeholder">The JPEG images are 8-bit, so their pixel values are converted to the range from 0 to 1 by dividing by 255, or 2<sup>8</sup> - 1. Each vertically stacked image is then divided into its blue, green, and red channels. Since these images are small and their displacements are limited, the green and red channels are aligned directly with the basic search. The offsets for both L2 and NCC are listed below each result in <code>(x, y)</code> order. The dropdown can also display the original unaligned combination for comparison.</p>
+            </div>
+            <div class="result-grid">
+                <article class="result-card">
+                    <div class="result-frame">
+                        <img class="result-image" src="./media/cathedral-l2.jpg" data-l2="./media/cathedral-l2.jpg" data-ncc="./media/cathedral-ncc.jpg" data-l2-shift="G (2, 5) · R (3, 12)" data-ncc-shift="G (2, 5) · R (3, 12)" alt="Colorized Cathedral glass plate">
+                        <span class="method-chip">L2</span>
+                    </div>
+                    <div class="result-info">
+                        <div><p>JPEG</p><h3>Cathedral</h3></div>
+                        <label>Method<select class="method-select" aria-label="Alignment method for Cathedral"><option value="l2">L2</option><option value="ncc">NCC</option></select></label>
+                    </div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (2, 5) · R (3, 12)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame">
+                        <img class="result-image" src="./media/monastery-l2.jpg" data-l2="./media/monastery-l2.jpg" data-ncc="./media/monastery-ncc.jpg" data-l2-shift="G (2, -3) · R (2, 3)" data-ncc-shift="G (2, -3) · R (2, 3)" alt="Colorized Monastery glass plate">
+                        <span class="method-chip">L2</span>
+                    </div>
+                    <div class="result-info">
+                        <div><p>JPEG</p><h3>Monastery</h3></div>
+                        <label>Method<select class="method-select" aria-label="Alignment method for Monastery"><option value="l2">L2</option><option value="ncc">NCC</option></select></label>
+                    </div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (2, -3) · R (2, 3)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame">
+                        <img class="result-image" src="./media/tobolsk-l2.jpg" data-l2="./media/tobolsk-l2.jpg" data-ncc="./media/tobolsk-ncc.jpg" data-l2-shift="G (3, 3) · R (3, 7)" data-ncc-shift="G (3, 3) · R (3, 6)" alt="Colorized Tobolsk glass plate">
+                        <span class="method-chip">L2</span>
+                    </div>
+                    <div class="result-info">
+                        <div><p>JPEG</p><h3>Tobolsk</h3></div>
+                        <label>Method<select class="method-select" aria-label="Alignment method for Tobolsk"><option value="l2">L2</option><option value="ncc">NCC</option></select></label>
+                    </div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (3, 3) · R (3, 7)</span></p>
+                </article>
+            </div>
+        </section>
+
+        <section class="results-section section-blue" id="tiff-results">
+            <div class="section-heading compact-heading">
+                <p class="section-kicker">03 · Large images</p>
+                <h2>Multiscale TIFF results</h2>
+                <p class="section-placeholder">The TIFF images are 16-bit, so their pixel values are converted to the range from 0 to 1 by dividing by 65535, or 2<sup>16</sup> - 1. After separating the blue, green, and red channels, a five-level pyramid is built for each one. The green and red pyramids are aligned independently to the blue pyramid, starting from the smallest level and continuing toward the original resolution. At every larger level, the previous displacement is doubled and refined within a two-pixel radius. The offsets computed using both L2 and NCC are listed below each result in <code>(x, y)</code> order, and the dropdown includes the original unaligned image.</p>
+            </div>
+            <div class="result-grid">
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/church-l2.jpg" data-l2="./media/church-l2.jpg" data-ncc="./media/church-ncc.jpg" data-l2-shift="G (4, 25) · R (-4, 58)" data-ncc-shift="G (4, 25) · R (-4, 58)" alt="Colorized Church glass plate"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF</p><h3>Church</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Church"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (4, 25) · R (-4, 58)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/harvesters-l2.jpg" data-l2="./media/harvesters-l2.jpg" data-ncc="./media/harvesters-ncc.jpg" data-l2-shift="G (17, 59) · R (14, 123)" data-ncc-shift="G (17, 60) · R (14, 124)" alt="Colorized Harvesters glass plate"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF</p><h3>Harvesters</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Harvesters"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (17, 59) · R (14, 123)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/icon-l2.jpg" data-l2="./media/icon-l2.jpg" data-ncc="./media/icon-ncc.jpg" data-l2-shift="G (17, 41) · R (23, 89)" data-ncc-shift="G (17, 41) · R (23, 89)" alt="Colorized Icon glass plate"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF</p><h3>Icon</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Icon"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (17, 41) · R (23, 89)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/ilemselga-l2.jpg" data-l2="./media/ilemselga-l2.jpg" data-ncc="./media/ilemselga-ncc.jpg" data-l2-shift="G (7, 40) · R (11, 131)" data-ncc-shift="G (7, 40) · R (11, 130)" alt="Colorized Ilemselga glass plate"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF</p><h3>Ilemselga</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Ilemselga"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (7, 40) · R (11, 131)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/melons-l2.jpg" data-l2="./media/melons-l2.jpg" data-ncc="./media/melons-ncc.jpg" data-l2-shift="G (11, 82) · R (14, 178)" data-ncc-shift="G (11, 82) · R (13, 178)" alt="Colorized Melons glass plate"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF</p><h3>Melons</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Melons"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (11, 82) · R (14, 178)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/religous-painting-l2.jpg" data-l2="./media/religous-painting-l2.jpg" data-ncc="./media/religous-painting-ncc.jpg" data-l2-shift="G (3, 29) · R (7, 69)" data-ncc-shift="G (3, 28) · R (7, 68)" alt="Colorized Religious Painting glass plate"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF</p><h3>Religious Painting</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Religious Painting"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (3, 29) · R (7, 69)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/self-portrait-l2.jpg" data-l2="./media/self-portrait-l2.jpg" data-ncc="./media/self-portrait-ncc.jpg" data-l2-shift="G (29, 78) · R (37, 175)" data-ncc-shift="G (29, 79) · R (36, 176)" alt="Colorized Self Portrait glass plate"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF</p><h3>Self Portrait</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Self Portrait"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (29, 78) · R (37, 175)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/siren-l2.jpg" data-l2="./media/siren-l2.jpg" data-ncc="./media/siren-ncc.jpg" data-l2-shift="G (-5, 50) · R (-24, 97)" data-ncc-shift="G (-6, 49) · R (-25, 96)" alt="Colorized Siren glass plate"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF</p><h3>Siren</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Siren"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (-5, 50) · R (-24, 97)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/three-generations-l2.jpg" data-l2="./media/three-generations-l2.jpg" data-ncc="./media/three-generations-ncc.jpg" data-l2-shift="G (15, 52) · R (12, 111)" data-ncc-shift="G (14, 53) · R (11, 112)" alt="Colorized Three Generations glass plate"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF</p><h3>Three Generations</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Three Generations"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (15, 52) · R (12, 111)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/wharf-l2.jpg" data-l2="./media/wharf-l2.jpg" data-ncc="./media/wharf-ncc.jpg" data-l2-shift="G (-6, 15) · R (-15, 82)" data-ncc-shift="G (-7, 15) · R (-16, 83)" alt="Colorized Wharf glass plate"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF</p><h3>Wharf</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Wharf"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (-6, 15) · R (-15, 82)</span></p>
+                </article>
+            </div>
+        </section>
+
+        <section class="results-section section-accent" id="additional-results">
+            <div class="section-heading compact-heading">
+                <p class="section-kicker">04 · Collection selections</p>
+                <h2>Additional images</h2>
+                <p class="section-placeholder">The additional results use three TIFF scans from the Prokudin-Gorskii collection at the Library of Congress: Hut, Orangerie, and Boy on Bridge. All three are processed with the same five-level pyramid and both scoring methods. The alignment works well on every image, while L2 and NCC produce offsets that differ by no more than one pixel.</p>
+            </div>
+            <div class="result-grid">
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/hut-l2.jpg" data-l2="./media/hut-l2.jpg" data-ncc="./media/hut-ncc.jpg" data-l2-shift="G (39, 48) · R (56, 108)" data-ncc-shift="G (38, 48) · R (55, 107)" alt="Colorized portrait in front of a hut"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF · LOC</p><h3>Hut</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Hut"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (39, 48) · R (56, 108)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/orangerie-l2.jpg" data-l2="./media/orangerie-l2.jpg" data-ncc="./media/orangerie-ncc.jpg" data-l2-shift="G (28, 59) · R (34, 126)" data-ncc-shift="G (28, 60) · R (35, 126)" alt="Colorized Orangerie interior"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF · LOC</p><h3>Orangerie</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Orangerie"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (28, 59) · R (34, 126)</span></p>
+                </article>
+
+                <article class="result-card">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/boy-on-bridge-l2.jpg" data-l2="./media/boy-on-bridge-l2.jpg" data-ncc="./media/boy-on-bridge-ncc.jpg" data-l2-shift="G (-14, 45) · R (-11, 103)" data-ncc-shift="G (-13, 45) · R (-11, 103)" alt="Colorized boy sitting on a bridge"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF · LOC</p><h3>Boy on Bridge</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Boy on Bridge"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (-14, 45) · R (-11, 103)</span></p>
+                </article>
+            </div>
+        </section>
+
+        <section class="results-section section-failure" id="failures">
+            <div class="section-heading compact-heading">
+                <p class="section-kicker">05 · Analysis</p>
+                <h2>Failure and observations</h2>
+                <div class="observation-copy">
+                    <p>Several border crops were tested because the image edges and the pixels moved from one side to the other by <code>np.roll</code> can interfere with proper scoring. A 25% crop was the most reliable choice for L2 and for most of the images. Lowering the NCC crop to 10% included more of the image in the score and improved Emir. A 5% crop improved Emir slightly more, but it also left too much of the border in the comparison and made several other images worse. Therefore, 25% was kept for L2 and 10% for NCC. Keeping these different values also shows how the two methods perform with different border crops.</p>
+                    <p>L2 and NCC found the same alignment, or differed by only one or two pixels, for nearly every image. This happens because most channels still show the same shapes and details even when their brightness is different, so both methods agree on where the images line up. Emir is the main exception. His blue clothing is very bright in the blue channel but much darker in the red channel, so the same area has very different pixel values. L2 compares these values directly and selects the wrong red displacement. NCC removes the average brightness and adjusts the channels to the same scale before comparing them, so the brightness change has less influence and the 10% crop produces a much better alignment.</p>
+                </div>
+            </div>
+            <div class="result-grid failure-grid">
+                <article class="result-card result-card-warning">
+                    <div class="result-frame"><img class="result-image" loading="lazy" src="./media/emir-l2.jpg" data-l2="./media/emir-l2.jpg" data-ncc="./media/emir-ncc.jpg" data-l2-shift="G (24, 48) · R (-211, 236)" data-ncc-shift="G (24, 49) · R (56, 104)" alt="Colorized Emir glass plate with failed red-channel alignment"><span class="method-chip">L2</span></div>
+                    <div class="result-info"><div><p>TIFF · Observation</p><h3>Emir</h3></div><label>Method<select class="method-select" aria-label="Alignment method for Emir"><option value="l2">L2</option><option value="ncc">NCC</option></select></label></div>
+                    <p class="shift-line">Displacements <span class="shift-values">G (24, 48) · R (-211, 236)</span></p>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <footer class="project-footer">
+        <a href="../index.html"><span aria-hidden="true">←</span> CS180 Portfolio</a>
+        <span>UC Berkeley · Fall 2026</span>
+    </footer>
+
+    <script src="./gallery.js"></script>
+</body>
+</html>
