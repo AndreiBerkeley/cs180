@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CS180 Project 2: Fun with Filters and Frequencies.">
+    <title>Project 2 · Filters and Frequencies</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <header class="project-header">
+        <a class="back-link" href="../index.html" aria-label="Back to CS180 portfolio">
+            <span aria-hidden="true">←</span>
+            <span>CS180 Portfolio</span>
+        </a>
+        <span class="project-marker">Project 2 · Filters and Frequencies</span>
+    </header>
+
+    <main>
+        <section class="project-hero">
+            <div class="hero-copy">
+                <p class="eyebrow">Project 2 · Computational Photography</p>
+                <h1>Fun with Filters<br>and <em>Frequencies</em></h1>
+                <p class="hero-placeholder">This project starts with individual pixels and builds toward images that change depending on how they are viewed. It covers convolution, edge detection, sharpening, hybrid images, frequency stacks, and multiresolution blending.</p>
+            </div>
+            <span class="hero-number" aria-hidden="true">02</span>
+        </section>
+
+        <nav class="section-nav" aria-label="Project sections">
+            <a href="#filters">Filters</a>
+            <a href="#edges">Edges</a>
+            <a href="#sharpening">Sharpening</a>
+            <a href="#hybrids">Hybrid images</a>
+            <a href="#stacks">Stacks</a>
+            <a href="#blending">Blending</a>
+        </nav>
+
+        <section class="content-section section-paper" id="filters">
+            <header class="section-heading">
+                <p class="section-kicker">01 · Part 1.1</p>
+                <h2>Convolutions from scratch</h2>
+                <p>Two versions of 2D convolution were implemented from scratch using only NumPy operations: one using four loops and another using two loops with a NumPy sum. In both versions, the kernel is flipped and the image is padded with zeros so the output keeps the original dimensions. Each output pixel is then calculated from the matching image window and kernel. Both implementations were compared with <code>scipy.signal.convolve2d</code> and produced the same results.</p>
+            </header>
+
+            <div class="feature-grid feature-grid-wide">
+                <figure class="visual-card visual-card-large">
+                    <img src="./media/part1_1_results.jpg?v=2" alt="Portrait convolved with a box filter and finite difference filters">
+                    <figcaption>Portrait convolution results</figcaption>
+                </figure>
+
+                <div class="data-card">
+                    <p class="card-label">Runtime comparison</p>
+                    <div class="runtime-row"><span>Four loops</span><strong>26.73 s</strong></div>
+                    <div class="runtime-row"><span>Two loops</span><strong>2.08 s</strong></div>
+                    <div class="runtime-row"><span>SciPy</span><strong>0.11 s</strong></div>
+                    <p class="small-placeholder">The four-loop version was the slowest because every multiplication was handled inside Python. Moving the two inner loops into NumPy reduced the runtime considerably, while SciPy remained the fastest option.</p>
+                </div>
+            </div>
+
+            <details class="code-details">
+                <summary>Selected implementation details <span>+</span></summary>
+                <div class="code-grid">
+                    <pre><code>for i in range(image_height):
+    for j in range(image_width):
+        for n in range(kernel_height):
+            for m in range(kernel_width):
+                ans[i, j] += padd_image[i + n, j + m] * flip_kernel[n, m]</code></pre>
+                    <pre><code>for i in range(image_height):
+    for j in range(image_width):
+        ans[i, j] = np.sum(padd_image[i:i+kernel_height, j:j+kernel_width] * flip_kernel)
+
+box_filter = np.ones((9, 9)) / 81
+dx = np.array([[1, -1]])
+dy = np.array([[1], [-1]])</code></pre>
+                </div>
+            </details>
+        </section>
+
+        <section class="content-section section-blue" id="edges">
+            <header class="section-heading">
+                <p class="section-kicker">02 · Parts 1.2 and 1.3</p>
+                <h2>Edges and Gaussian derivatives</h2>
+                <p>The finite difference filters measure changes in the horizontal and vertical directions. Their results are combined using <code>sqrt(Dx² + Dy²)</code> to obtain the gradient magnitude. After trying several values, 0.215 gave the best balance between keeping real edges and removing noise. Blurring the image first with a 9×9 Gaussian filter and sigma 2 reduced the small background responses, although the remaining edges became slightly thicker. Convolving the Gaussian with the derivative filters first gave the same gradient result as blurring and differentiating in two separate steps.</p>
+            </header>
+
+            <div class="compact-stat"><span>Selected threshold</span><strong>0.215</strong></div>
+
+            <div class="visual-stack">
+                <figure class="visual-card wide-figure">
+                    <img src="./media/part1_2_results.jpg?v=2" alt="Cameraman horizontal and vertical derivatives, gradient magnitude, and binary edges">
+                    <figcaption>Finite difference results</figcaption>
+                </figure>
+                <div class="two-column-figures edge-detail-results">
+                    <figure class="visual-card">
+                        <img src="./media/part1_3_blur_results.jpg?v=2" alt="Gaussian-smoothed cameraman edge results">
+                        <figcaption>Blur followed by finite differences</figcaption>
+                    </figure>
+                    <figure class="visual-card">
+                        <img src="./media/part1_3_dog_results.jpg?v=2" alt="Derivative of Gaussian filters and cameraman results">
+                        <figcaption>Derivative of Gaussian filters</figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section section-accent" id="sharpening">
+            <header class="section-heading">
+                <p class="section-kicker">03 · Part 2.1</p>
+                <h2>Image sharpening</h2>
+                <p>A Gaussian blur keeps the low frequencies of an image. Subtracting this blurred version from the original isolates the high frequencies, which contain most of the fine edges and details. The sharpened image is calculated as <code>I + alpha(I - G * I)</code>. This can also be combined into the single unsharp-mask filter <code>(1 + alpha)delta - alphaG</code>, where <code>delta</code> is the identity filter that leaves the original image unchanged. Several alpha values were compared. The portrait experiment shows that sharpening restores some edge contrast, but it cannot fully recover details removed by a strong blur.</p>
+            </header>
+
+            <div class="two-column-figures sharpening-results">
+                <figure class="visual-card">
+                    <img src="./media/taj_frequency_results.jpg?v=2" alt="Original Taj Mahal, blurred image, and high frequencies">
+                    <figcaption>Taj Mahal frequency separation</figcaption>
+                </figure>
+                <figure class="visual-card">
+                    <img src="./media/taj_sharpening_amounts.jpg?v=2" alt="Taj Mahal sharpened with three alpha values">
+                    <figcaption>Sharpening amount comparison</figcaption>
+                </figure>
+                <figure class="visual-card">
+                    <img src="./media/taj_unsharp_comparison.jpg?v=2" alt="Two equivalent unsharp-mask implementations">
+                    <figcaption>Unsharp-mask equivalence</figcaption>
+                </figure>
+                <figure class="visual-card">
+                    <img src="./media/portrait_blur_sharpen.jpg?v=2" alt="Original portrait, artificially blurred portrait, and sharpened result">
+                    <figcaption>Blur and recovery experiment</figcaption>
+                </figure>
+            </div>
+        </section>
+
+        <section class="content-section section-paper-deep" id="hybrids">
+            <header class="section-heading">
+                <p class="section-kicker">04 · Part 2.2</p>
+                <h2>Hybrid images</h2>
+                <p>Each pair of images was aligned so that its main facial features stayed in corresponding positions. The low frequencies of one image were then combined with the high frequencies of the other. Up close, the fine high-frequency details are easier to notice. From farther away, those details become less visible and the low-frequency image takes over. The sigma values act as the cutoff choices and control how much detail remains in each part. After multiple rounds of trial and error, I settled on values that kept both images recognizable while still creating a clear distinction between what is visible from close up and farther away. The Fourier plots for the portrait and wolf show how blurring concentrates information near the center while the high-frequency component spreads it outward.</p>
+            </header>
+
+            <div class="hybrid-grid hybrid-report-grid">
+                <article class="hybrid-card">
+                    <div class="source-strip">
+                        <img src="./media/DerekPicture.jpg" alt="Original portrait of Derek">
+                        <img src="./media/nutmeg.jpg" alt="Original photograph of Nutmeg the cat">
+                    </div>
+                    <img class="hybrid-result" src="./media/derek_cat_hybrid.jpg?v=2" alt="Derek and Nutmeg hybrid image">
+                    <div class="hybrid-copy"><p>Example</p><h3>Derek + Nutmeg</h3><span>Low σ 10 · High σ 3</span></div>
+                </article>
+
+                <article class="hybrid-card hybrid-card-featured">
+                    <div class="source-strip">
+                        <img src="./media/portrait.jpeg" alt="Original portrait">
+                        <img src="./media/wolf.jpg" alt="Original wolf photograph">
+                    </div>
+                    <img class="hybrid-result" src="./media/portrait_wolf_hybrid.jpg?v=2" alt="Portrait and wolf hybrid image">
+                    <div class="hybrid-copy"><p>Full analysis</p><h3>Portrait + Wolf</h3><span>Low σ 10 · High σ 4</span></div>
+                </article>
+
+                <article class="hybrid-card">
+                    <div class="source-strip">
+                        <img src="./media/lion.jpg" alt="Original lion photograph">
+                        <img src="./media/crocodile.jpg" alt="Original crocodile photograph">
+                    </div>
+                    <img class="hybrid-result" src="./media/lion_crocodile_hybrid.jpg?v=4" alt="Lion and crocodile hybrid image">
+                    <div class="hybrid-copy"><p>Custom</p><h3>Lion + Crocodile</h3><span>Low σ 8 · High σ 2</span></div>
+                </article>
+            </div>
+
+            <details class="process-details" open>
+                <summary>Portrait + Wolf: full process <span>−</span></summary>
+                <div class="visual-stack process-content">
+                    <figure class="visual-card wide-figure">
+                        <img src="./media/portrait_wolf_original_aligned.jpg?v=2" alt="Original and aligned portrait and wolf images">
+                        <figcaption>Original and aligned inputs</figcaption>
+                    </figure>
+                    <div class="two-column-figures">
+                        <figure class="visual-card">
+                            <img src="./media/portrait_wolf_hybrid_process.jpg?v=2" alt="Portrait low frequencies, wolf high frequencies, and hybrid">
+                            <figcaption>Filtered components and final hybrid</figcaption>
+                        </figure>
+                        <figure class="visual-card">
+                            <img src="./media/portrait_wolf_fourier.jpg?v=2" alt="Fourier analysis of the portrait and wolf hybrid">
+                            <figcaption>Fourier-domain analysis</figcaption>
+                        </figure>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        <section class="content-section section-paper" id="stacks">
+            <header class="section-heading">
+                <p class="section-kicker">05 · Part 2.3</p>
+                <h2>Gaussian and Laplacian stacks</h2>
+                <p>The Gaussian stack contains increasingly blurred versions of the image without any downsampling, so every level keeps the original dimensions. The blur uses <code>sigma = 2^level</code>. Each Laplacian level is found by subtracting two neighboring Gaussian levels, leaving a different band of image frequencies. The final Gaussian level is kept as the lowest-frequency part. Adding every Laplacian level together reconstructs the original image. In the Figure 3.42 recreation, levels 0, 2, and 4 show the high-, medium-, and low-frequency bands. The left and middle columns contain the masked Apple and Orange contributions, while the right column contains their sum.</p>
+            </header>
+
+            <figure class="visual-card wide-figure stack-overview">
+                <img src="./media/apple_orange_stacks.jpg?v=2" alt="Gaussian and Laplacian stacks for the apple and orange">
+                <figcaption>Apple and orange stacks across eight levels</figcaption>
+            </figure>
+
+            <div class="three-column-figures stack-details">
+                <figure class="visual-card">
+                    <img src="./media/orapple_gaussian_stack.jpg?v=2" alt="Gaussian stack for the orapple image">
+                    <figcaption>Gaussian stack</figcaption>
+                </figure>
+                <figure class="visual-card">
+                    <img src="./media/orapple_laplacian_stack.jpg?v=2" alt="Laplacian stack for the orapple image">
+                    <figcaption>Laplacian stack</figcaption>
+                </figure>
+                <figure class="visual-card">
+                    <img src="./media/orapple_reconstruction.jpg?v=2" alt="Original and reconstructed orapple image">
+                    <figcaption>Stack reconstruction</figcaption>
+                </figure>
+            </div>
+        </section>
+
+        <section class="content-section section-blue" id="blending">
+            <header class="section-heading">
+                <p class="section-kicker">06 · Part 2.4</p>
+                <h2>Multiresolution blending</h2>
+                <p>The apple and orange are blended using eight-level Gaussian and Laplacian stacks. A Gaussian stack is also created for the mask, causing its sharp boundary to become smoother at lower frequencies. At every level, the mask selects a weighted contribution from each image's Laplacian level. Adding the blended levels reconstructs the final result. Compared with the hard splice, this method creates a much smoother transition between the two images.</p>
+            </header>
+
+            <div class="two-column-figures blend-comparisons">
+                <figure class="visual-card">
+                    <img src="./media/orapple_hard_splice.jpg?v=2" alt="Apple, vertical mask, and hard splice">
+                    <figcaption>Inputs and hard splice</figcaption>
+                </figure>
+                <figure class="visual-card">
+                    <img src="./media/orapple_blend_comparison.jpg?v=2" alt="Hard splice compared with multiresolution blending">
+                    <figcaption>Hard seam versus multiresolution seam</figcaption>
+                </figure>
+            </div>
+
+            <details class="process-details" open>
+                <summary>Orapple process and Figure 3.42 <span>−</span></summary>
+                <div class="visual-stack process-content">
+                    <figure class="visual-card wide-figure">
+                        <img src="./media/orapple_mask_stack.jpg?v=2" alt="Gaussian stack of the vertical blending mask">
+                        <figcaption>Gaussian mask stack</figcaption>
+                    </figure>
+                    <figure class="visual-card figure-tall">
+                        <img src="./media/orapple_figure_3_42.jpg?v=2" alt="Recreation of Figure 3.42 with masked apple and orange frequency bands">
+                        <figcaption>Recreated Figure 3.42, panels a through l</figcaption>
+                    </figure>
+                </div>
+            </details>
+
+            <div class="custom-heading">
+                <p class="section-kicker">Custom results</p>
+                <h3>Irregular masks</h3>
+                <p>The same blending method also works with masks that are not straight lines. An elliptical mask places the crocodile in the center of the lion image. For the portrait and wolf, my weird round triangle shape keeps the portrait in the middle while the wolf remains outside it. Blurring these masks at every level softens their borders and helps the facial features blend without a single obvious seam.</p>
+            </div>
+
+            <div class="two-column-figures custom-results">
+                <figure class="visual-card">
+                    <img src="./media/lion_crocodile_multiresolution.jpg?v=2" alt="Lion and crocodile multiresolution blend using an ellipse mask">
+                    <figcaption>Lion + Crocodile · Elliptical mask</figcaption>
+                </figure>
+                <figure class="visual-card">
+                    <img src="./media/portrait_wolf_multiresolution.jpg?v=2" alt="Portrait and wolf multiresolution blend using a rounded custom mask">
+                    <figcaption>Portrait + Wolf · Rounded custom mask</figcaption>
+                </figure>
+            </div>
+        </section>
+
+        <section class="takeaway-section">
+            <p class="section-kicker">Final observation</p>
+            <h2>Most important thing learned</h2>
+            <p>The most important idea in this project is that an image can be separated into different frequency ranges. The same idea appears in edge detection, sharpening, hybrid images, and multiresolution blending. Once the high and low frequencies can be controlled separately, details can be emphasized, hidden by viewing distance, or joined across a much smoother boundary.</p>
+        </section>
+    </main>
+
+    <footer class="project-footer">
+        <a href="../index.html"><span aria-hidden="true">←</span> CS180 Portfolio</a>
+        <span>UC Berkeley · Fall 2026</span>
+    </footer>
+</body>
+</html>
